@@ -59,7 +59,7 @@ _git_ritual() {
   fi
 
   local date_stamp
-  date_stamp="$(date +%d%m%Y)"
+  date_stamp="$(date +%Y-%m-%d)"
 
   local branch="${type}/${user_slug}/${name_slug}-${date_stamp}"
 
@@ -134,13 +134,79 @@ nuke() {
   git clean -fd
 }
 
+# Show git status
+status() {
+  if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+    printf 'fatal: not a git repository (or any of the parent directories)\n' >&2
+    return 1
+  fi
+
+  git status "$@"
+}
+
+# Pretty git log
+logs() {
+  if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+    printf 'fatal: not a git repository (or any of the parent directories)\n' >&2
+    return 1
+  fi
+
+  git log -50 --pretty=format:'%C(yellow)%h%C(reset)|%C(green)%ad%C(reset)|%C(blue)%an%C(reset)|%C(red)%s%C(reset)' --date=format:'%Y-%m-%d %H:%M:%S' | awk -F'|' '{printf "\033[33m%-10s\033[0m \033[32m%-20s\033[0m \033[34m%-15s\033[0m \033[31m%-50s\033[0m\n", $1, $2, $3, substr($4,0,50)}'
+}
+
+# Yeet current branch — switch to parent and delete the branch
+yeet() {
+  if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+    printf 'fatal: not a git repository (or any of the parent directories)\n' >&2
+    return 1
+  fi
+
+  local current_branch
+  current_branch="$(git rev-parse --abbrev-ref HEAD)"
+
+  if [ "$current_branch" = "main" ] || [ "$current_branch" = "master" ]; then
+    printf 'error: refusing to yeet %s\n' "$current_branch" >&2
+    return 1
+  fi
+
+  # Find parent branch (where current branch forked from)
+  local parent_branch
+  parent_branch="$(git log --pretty=format:'%D' --all | tr ',' '\n' | sed 's/^ *//' | grep -v "HEAD" | grep -v "$current_branch" | head -1 | sed 's|origin/||')"
+  # Fallback to main/master if we can't detect
+  if [ -z "$parent_branch" ]; then
+    if git show-ref --verify --quiet refs/heads/main; then
+      parent_branch="main"
+    elif git show-ref --verify --quiet refs/heads/master; then
+      parent_branch="master"
+    else
+      printf 'error: could not determine parent branch\n' >&2
+      return 1
+    fi
+  fi
+
+  printf '\033[31mWarning: this will permanently delete branch "%s"\033[0m\n' "$current_branch"
+  printf 'All staged and unstaged changes will be lost.\n'
+  printf 'Switching to: %s\n\n' "$parent_branch"
+  printf 'Type "yeet" to confirm: '
+  read -r confirm
+  if [ "$confirm" != "yeet" ]; then
+    printf 'Aborted.\n'
+    return 1
+  fi
+
+  git reset --hard HEAD
+  git clean -fd
+  git checkout "$parent_branch"
+  git branch -D "$current_branch"
+}
+
 # Meta-command
 git-rituals() {
   case "${1:-}" in
     list)
       printf 'git-rituals v%s\n\n' "$_GIT_RITUALS_VERSION"
       printf 'Available rituals:\n'
-      for r in feat fix chore refactor docs style perf push pull nuke; do
+      for r in feat fix chore refactor docs style perf push pull nuke status logs yeet; do
         if [ -z "$_git_rituals_enabled" ]; then
           printf '  %-12s [enabled]\n' "$r"
         else
@@ -153,11 +219,14 @@ git-rituals() {
       printf '\nBranch rituals:\n'
       printf '  <ritual> <branch-name>    Create and switch to branch\n'
       printf '  Example: feat add login page\n'
-      printf '    Creates: feat/<your-name>/add-login-page-07022026\n'
+      printf '    Creates: feat/<your-name>/add-login-page-2026-02-07\n'
       printf '\nShortcuts:\n'
       printf '  push                      Push current branch to remote\n'
       printf '  pull                      Pull current branch from remote\n'
       printf '  nuke                      Reset all staged/unstaged changes\n'
+      printf '  status                    Show git status\n'
+      printf '  logs                      Pretty git log (last 50 commits)\n'
+      printf '  yeet                      Delete current branch and switch to parent\n'
       ;;
     uninstall)
       if [ -f "${_GIT_RITUALS_DIR}/uninstall.sh" ]; then

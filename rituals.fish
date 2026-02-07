@@ -67,7 +67,7 @@ function _git_ritual
         return 1
     end
 
-    set -l date_stamp (date +%d%m%Y)
+    set -l date_stamp (date +%Y-%m-%d)
     set -l branch "$type/$user_slug/$name_slug-$date_stamp"
 
     # If branch already exists, switch to it
@@ -174,13 +174,73 @@ function nuke -d "Reset all staged/unstaged changes"
     git clean -fd
 end
 
+# Show git status
+function status -d "Show git status"
+    if not git rev-parse --is-inside-work-tree >/dev/null 2>&1
+        printf 'fatal: not a git repository (or any of the parent directories)\n' >&2
+        return 1
+    end
+
+    git status $argv
+end
+
+# Pretty git log
+function logs -d "Pretty git log"
+    if not git rev-parse --is-inside-work-tree >/dev/null 2>&1
+        printf 'fatal: not a git repository (or any of the parent directories)\n' >&2
+        return 1
+    end
+
+    git log -50 --pretty=format:'%C(yellow)%h%C(reset)|%C(green)%ad%C(reset)|%C(blue)%an%C(reset)|%C(red)%s%C(reset)' --date=format:'%Y-%m-%d %H:%M:%S' | awk -F'|' '{printf "\033[33m%-10s\033[0m \033[32m%-20s\033[0m \033[34m%-15s\033[0m \033[31m%-50s\033[0m\n", $1, $2, $3, substr($4,0,50)}'
+end
+
+# Yeet current branch — switch to parent and delete the branch
+function yeet -d "Delete current branch and switch to parent"
+    if not git rev-parse --is-inside-work-tree >/dev/null 2>&1
+        printf 'fatal: not a git repository (or any of the parent directories)\n' >&2
+        return 1
+    end
+
+    set -l current_branch (git rev-parse --abbrev-ref HEAD)
+
+    if test "$current_branch" = main; or test "$current_branch" = master
+        printf 'error: refusing to yeet %s\n' $current_branch >&2
+        return 1
+    end
+
+    # Fallback to main/master as parent
+    set -l parent_branch ""
+    if git show-ref --verify --quiet refs/heads/main
+        set parent_branch main
+    else if git show-ref --verify --quiet refs/heads/master
+        set parent_branch master
+    else
+        printf 'error: could not determine parent branch\n' >&2
+        return 1
+    end
+
+    printf '\033[31mWarning: this will permanently delete branch "%s"\033[0m\n' $current_branch
+    printf 'All staged and unstaged changes will be lost.\n'
+    printf 'Switching to: %s\n\n' $parent_branch
+    read -P 'Type "yeet" to confirm: ' confirm
+    if test "$confirm" != yeet
+        printf 'Aborted.\n'
+        return 1
+    end
+
+    git reset --hard HEAD
+    git clean -fd
+    git checkout $parent_branch
+    git branch -D $current_branch
+end
+
 # Meta-command
 function git-rituals -d "git-rituals meta command"
     switch "$argv[1]"
         case list
             printf 'git-rituals v%s\n\n' $_GIT_RITUALS_VERSION
             printf 'Available rituals:\n'
-            for r in feat fix chore refactor docs style perf push pull nuke
+            for r in feat fix chore refactor docs style perf push pull nuke status logs yeet
                 if _git_ritual_is_enabled $r
                     printf '  %-12s [enabled]\n' $r
                 else
@@ -190,11 +250,14 @@ function git-rituals -d "git-rituals meta command"
             printf '\nBranch rituals:\n'
             printf '  <ritual> <branch-name>    Create and switch to branch\n'
             printf '  Example: feat add login page\n'
-            printf '    Creates: feat/<your-name>/add-login-page-07022026\n'
+            printf '    Creates: feat/<your-name>/add-login-page-2026-02-07\n'
             printf '\nShortcuts:\n'
             printf '  push                      Push current branch to remote\n'
             printf '  pull                      Pull current branch from remote\n'
             printf '  nuke                      Reset all staged/unstaged changes\n'
+            printf '  status                    Show git status\n'
+            printf '  logs                      Pretty git log (last 50 commits)\n'
+            printf '  yeet                      Delete current branch and switch to parent\n'
         case uninstall
             if test -f "$_GIT_RITUALS_DIR/uninstall.sh"
                 bash "$_GIT_RITUALS_DIR/uninstall.sh"
