@@ -187,12 +187,11 @@ yeet() {
   printf '\033[31mWarning: this will permanently delete branch "%s"\033[0m\n' "$current_branch"
   printf 'All staged and unstaged changes will be lost.\n'
   printf 'Switching to: %s\n\n' "$parent_branch"
-  printf 'Type "yeet" to confirm: '
+  printf 'Continue? [Y/n] '
   read -r confirm
-  if [ "$confirm" != "yeet" ]; then
-    printf 'Aborted.\n'
-    return 1
-  fi
+  case "$confirm" in
+    [nN]*) printf 'Aborted.\n'; return 1 ;;
+  esac
 
   git reset --hard HEAD
   git clean -fd

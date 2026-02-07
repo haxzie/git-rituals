@@ -222,8 +222,8 @@ function yeet -d "Delete current branch and switch to parent"
     printf '\033[31mWarning: this will permanently delete branch "%s"\033[0m\n' $current_branch
     printf 'All staged and unstaged changes will be lost.\n'
     printf 'Switching to: %s\n\n' $parent_branch
-    read -P 'Type "yeet" to confirm: ' confirm
-    if test "$confirm" != yeet
+    read -P 'Continue? [Y/n] ' confirm
+    if string match -qir '^n' -- $confirm
         printf 'Aborted.\n'
         return 1
     end
