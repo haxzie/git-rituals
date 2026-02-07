@@ -163,13 +163,24 @@ function pull -d "Pull current branch from remote"
     git pull $argv
 end
 
+# Nuke all staged and unstaged changes
+function nuke -d "Reset all staged/unstaged changes"
+    if not git rev-parse --is-inside-work-tree >/dev/null 2>&1
+        printf 'fatal: not a git repository (or any of the parent directories)\n' >&2
+        return 1
+    end
+
+    git reset --hard HEAD
+    git clean -fd
+end
+
 # Meta-command
 function git-rituals -d "git-rituals meta command"
     switch "$argv[1]"
         case list
             printf 'git-rituals v%s\n\n' $_GIT_RITUALS_VERSION
             printf 'Available rituals:\n'
-            for r in feat fix chore refactor docs style perf push pull
+            for r in feat fix chore refactor docs style perf push pull nuke
                 if _git_ritual_is_enabled $r
                     printf '  %-12s [enabled]\n' $r
                 else
@@ -183,6 +194,7 @@ function git-rituals -d "git-rituals meta command"
             printf '\nShortcuts:\n'
             printf '  push                      Push current branch to remote\n'
             printf '  pull                      Pull current branch from remote\n'
+            printf '  nuke                      Reset all staged/unstaged changes\n'
         case uninstall
             if test -f "$_GIT_RITUALS_DIR/uninstall.sh"
                 bash "$_GIT_RITUALS_DIR/uninstall.sh"

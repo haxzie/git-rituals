@@ -121,7 +121,7 @@ detect_shells() {
 }
 
 # --- All rituals enabled by default ---
-ALL_RITUALS="feat,fix,chore,refactor,docs,style,perf,push,pull"
+ALL_RITUALS="feat,fix,chore,refactor,docs,style,perf,push,pull,nuke"
 
 # --- Install files ---
 install_files() {

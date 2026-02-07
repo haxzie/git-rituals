@@ -129,13 +129,24 @@ pull() {
   git pull "$@"
 }
 
+# Nuke all staged and unstaged changes
+nuke() {
+  if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+    printf 'fatal: not a git repository (or any of the parent directories)\n' >&2
+    return 1
+  fi
+
+  git reset --hard HEAD
+  git clean -fd
+}
+
 # Meta-command
 git-rituals() {
   case "${1:-}" in
     list)
       printf 'git-rituals v%s\n\n' "$_GIT_RITUALS_VERSION"
       printf 'Available rituals:\n'
-      local all_rituals=(feat fix chore refactor docs style perf push pull)
+      local all_rituals=(feat fix chore refactor docs style perf push pull nuke)
       for r in "${all_rituals[@]}"; do
         local ritual_state="disabled"
         if [ ${#_git_rituals_enabled[@]} -eq 0 ]; then
@@ -161,6 +172,7 @@ git-rituals() {
       printf '\nShortcuts:\n'
       printf '  push                      Push current branch to remote\n'
       printf '  pull                      Pull current branch from remote\n'
+      printf '  nuke                      Reset all staged/unstaged changes\n'
       ;;
     uninstall)
       if [ -f "${_GIT_RITUALS_DIR}/uninstall.sh" ]; then
