@@ -194,20 +194,14 @@ print_success() {
     gum style --border rounded --padding "0 2" --border-foreground 76 \
       "git-rituals installed!" \
       "" \
-      "Restart your shell or run:" \
-      "  source ~/.git-rituals/rituals.sh" \
-      "" \
-      "Then try:" \
+      "Try:" \
       "  feat add login page" \
       "  fix broken auth" \
       "  chore update deps"
   else
     ok "git-rituals installed!"
     printf "\n"
-    printf "  Restart your shell or run:\n"
-    printf "    ${CYAN}source ~/.git-rituals/rituals.sh${RESET}\n"
-    printf "\n"
-    printf "  Then try:\n"
+    printf "  Try:\n"
     printf "    ${CYAN}feat${RESET} add login page\n"
     printf "    ${CYAN}fix${RESET} broken auth\n"
     printf "    ${CYAN}chore${RESET} update deps\n"
@@ -228,6 +222,11 @@ main() {
   write_config
   setup_shells
   print_success
+
+  # Restart the shell so rituals are available immediately.
+  # exec replaces this process with a fresh login shell that
+  # picks up the newly added source line in the rc file.
+  exec "$SHELL" -l
 }
 
 main
