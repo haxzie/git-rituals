@@ -5,7 +5,7 @@ set -e
 
 # --- Configuration ---
 INSTALL_DIR="${HOME}/.git-rituals"
-REPO_RAW_URL="https://raw.githubusercontent.com/AhmedMustah662/git-rituals/main"
+REPO_RAW_URL="https://raw.githubusercontent.com/haxzie/git-rituals/main"
 VERSION="1.0.0"
 
 # --- Colors & formatting ---

@@ -11,7 +11,8 @@ _git_rituals_enabled=()
 if [ -f "$_GIT_RITUALS_CONFIG" ]; then
   while IFS= read -r line; do
     case "$line" in
-      RITUALS=*) IFS=',' read -ra _git_rituals_enabled <<< "${line#RITUALS=}" ;;
+      RITUALS=*) IFS=',' read -r -A _git_rituals_enabled <<< "${line#RITUALS=}" 2>/dev/null \
+                 || IFS=',' read -r -a _git_rituals_enabled <<< "${line#RITUALS=}" ;;
     esac
   done < "$_GIT_RITUALS_CONFIG"
 fi
