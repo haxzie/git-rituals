@@ -230,6 +230,9 @@ git-rituals() {
     uninstall)
       if [ -f "${_GIT_RITUALS_DIR}/uninstall.sh" ]; then
         bash "${_GIT_RITUALS_DIR}/uninstall.sh"
+        # Remove functions from current shell session
+        unset -f feat fix chore refactor docs style perf push pull nuke status logs yeet git-rituals _git_ritual _git_ritual_slugify _define_ritual 2>/dev/null
+        unset _GIT_RITUALS_DIR _GIT_RITUALS_CONFIG _GIT_RITUALS_VERSION _git_rituals_enabled 2>/dev/null
       else
         printf 'error: uninstall script not found at %s/uninstall.sh\n' "$_GIT_RITUALS_DIR" >&2
         return 1
