@@ -6,13 +6,12 @@ _GIT_RITUALS_DIR="${HOME}/.git-rituals"
 _GIT_RITUALS_CONFIG="${_GIT_RITUALS_DIR}/config"
 _GIT_RITUALS_VERSION="1.0.0"
 
-# Load enabled rituals from config
-_git_rituals_enabled=()
+# Load enabled rituals from config (comma-separated string)
+_git_rituals_enabled=""
 if [ -f "$_GIT_RITUALS_CONFIG" ]; then
   while IFS= read -r line; do
     case "$line" in
-      RITUALS=*) IFS=',' read -r -A _git_rituals_enabled <<< "${line#RITUALS=}" 2>/dev/null \
-                 || IFS=',' read -r -a _git_rituals_enabled <<< "${line#RITUALS=}" ;;
+      RITUALS=*) _git_rituals_enabled="${line#RITUALS=}" ;;
     esac
   done < "$_GIT_RITUALS_CONFIG"
 fi
@@ -77,18 +76,12 @@ _git_ritual() {
 _define_ritual() {
   local name="$1"
 
-  # Check if enabled (if config exists; if no config, enable all)
-  if [ ${#_git_rituals_enabled[@]} -gt 0 ]; then
-    local found=0
-    for r in "${_git_rituals_enabled[@]}"; do
-      if [ "$r" = "$name" ]; then
-        found=1
-        break
-      fi
-    done
-    if [ "$found" -eq 0 ]; then
-      return
-    fi
+  # Check if enabled (if config exists; if no config/empty, enable all)
+  if [ -n "$_git_rituals_enabled" ]; then
+    case ",$_git_rituals_enabled," in
+      *,"$name",*) ;;
+      *) return ;;
+    esac
   fi
 
   eval "${name}() { _git_ritual ${name} \"\$@\"; }"
@@ -147,23 +140,14 @@ git-rituals() {
     list)
       printf 'git-rituals v%s\n\n' "$_GIT_RITUALS_VERSION"
       printf 'Available rituals:\n'
-      local all_rituals=(feat fix chore refactor docs style perf push pull nuke)
-      for r in "${all_rituals[@]}"; do
-        local ritual_state="disabled"
-        if [ ${#_git_rituals_enabled[@]} -eq 0 ]; then
-          ritual_state="enabled"
-        else
-          for e in "${_git_rituals_enabled[@]}"; do
-            if [ "$e" = "$r" ]; then
-              ritual_state="enabled"
-              break
-            fi
-          done
-        fi
-        if [ "$ritual_state" = "enabled" ]; then
+      for r in feat fix chore refactor docs style perf push pull nuke; do
+        if [ -z "$_git_rituals_enabled" ]; then
           printf '  %-12s [enabled]\n' "$r"
         else
-          printf '  %-12s [disabled]\n' "$r"
+          case ",$_git_rituals_enabled," in
+            *,"$r",*) printf '  %-12s [enabled]\n' "$r" ;;
+            *) printf '  %-12s [disabled]\n' "$r" ;;
+          esac
         fi
       done
       printf '\nBranch rituals:\n'
